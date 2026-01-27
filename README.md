@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ClipStudio Pro
+### SaaS para Creadores de Contenido - MVP
 
-## Getting Started
+Esta aplicación permite transformar videos largos en contenido vertical optimizado para **YouTube Shorts** y **TikTok**.
 
-First, run the development server:
+## 🚀 Tecnologías
+- **Framework**: Next.js 14+ (App Router)
+- **Lenguaje**: TypeScript
+- **Auth**: NextAuth.js (Google OAuth 2.0)
+- **Base de Datos**: Prisma + SQLite (fácil de migrar a Postgres)
+- **Estilos**: Tailwind CSS 4 + Radix UI (Glassmorphism design)
+- **Animaciones**: Framer Motion
+- **Video**: React Player
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🛠️ Configuración Local
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. **Clonar proyecto e instalar dependencias:**
+   ```bash
+   npm install
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. **Configurar el entorno:**
+   Crea un archivo `.env` (guíate por `.env.example`) con tus credenciales:
+   - **DATABASE_URL**: "file:./dev.db"
+   - **NEXTAUTH_SECRET**: Genera uno con `openssl rand -base64 32`
+   - **GOOGLE_CLIENT_ID** y **SECRET**: Obténlos en [Google Cloud Console](https://console.cloud.google.com/)
+     - Habilita: **YouTube Data API v3**
+     - URIs de redirección: `http://localhost:3000/api/auth/callback/google`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. **Inicializar Base de Datos:**
+   ```bash
+   npx prisma db push
+   ```
 
-## Learn More
+4. **Ejecutar en desarrollo:**
+   ```bash
+   npm run dev
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+## 🎥 Funcionalidades Implementadas
+- [x] **Autenticación**: Login con Google y persistencia de sesión.
+- [x] **Dashboard de Videos**: Interfaz premium para visualizar videos propios de YouTube.
+- [x] **Editor de Clips**:
+  - Reproductor integrado.
+  - Timeline interactivo para recorte (start/end).
+  - Validación de duración (máx 60s).
+- [x] **Diseño Premium**: Dark mode por defecto con efectos de vidrio y gradientes vibrantes.
+- [x] **Historial**: Seguimiento del estado de los clips (pending, success, error).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ⚠️ Próximos Pasos (SaaS Ready)
+- Implementar **FFmpeg.wasm** para procesamiento de video en el cliente.
+- Integración real con el endpoint de subida de TikTok (requiere revisión de App por TikTok).
+- Almacenamiento en S3/Google Cloud Storage para clips procesados.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## ⚖️ Disclaimer
+Este proyecto utiliza únicamente APIs oficiales. El usuario debe poseer los derechos del contenido que procesa.
