@@ -19,6 +19,7 @@ const menuItems = [
     { icon: Scissors, label: "Editor", href: "/editor" },
     { icon: Layers, label: "Clips", href: "/clips" },
     { icon: Share2, label: "Publicaciones", href: "/publicaciones" },
+    { icon: Settings, label: "Conectar TikTok", href: "/api/tiktok/login" },
 ];
 
 export function Sidebar() {

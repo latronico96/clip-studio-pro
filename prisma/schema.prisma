@@ -47,6 +47,8 @@ model User {
   accounts      Account[]
   sessions      Session[]
   clips         Clip[]
+  createdAt     DateTime @default(now())
+  tiktokAccount       TikTokAccount?
 }
 
 model VerificationToken {
@@ -84,3 +86,15 @@ model Clip {
   user          User          @relation(fields: [userId], references: [id])
   videoMetadata VideoMetadata @relation(fields: [videoMetadataId], references: [id])
 }
+
+model TikTokAccount {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  tiktokUserId String
+
+  user User @relation(fields: [userId], references: [id])
+}
+
