@@ -9,8 +9,10 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const session = await getServerSession(authOptions);
+  const userId = searchParams.get("state");
 
-  if (!session?.user?.id) {
+
+  if (!session?.user?.id || !userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
