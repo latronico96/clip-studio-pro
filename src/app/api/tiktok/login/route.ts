@@ -12,9 +12,9 @@ export async function GET() {
   const params = new URLSearchParams({
     client_key: process.env.TIKTOK_CLIENT_KEY!,
     response_type: "code",
-    scope: "user.info.basic",
+    scope: "user.info.profile",
     redirect_uri: process.env.TIKTOK_REDIRECT_URI!,
-    state: session!.user.id,
+    state: "test",
     code_challenge: codeChallenge, // 👈 typo corregido
     code_challenge_method: "S256",
   });
@@ -26,10 +26,10 @@ export async function GET() {
   // 🔐 Guardamos el code_verifier SOLO en cookie (no DB)
   response.cookies.set("tiktok_pkce", codeVerifier, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
+    secure: false,
     path: "/",
-    maxAge: 60 * 5, // 5 minutos (más que suficiente)
+    maxAge: 60 * 5,
+    sameSite: "lax",
   });
 
   return response;

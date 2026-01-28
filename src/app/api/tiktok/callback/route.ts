@@ -1,4 +1,4 @@
-// app/api/tiktok/callback/route.ts
+export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
