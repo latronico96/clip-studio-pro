@@ -41,3 +41,13 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# --- Generated scripts / runtime artifacts ---
+*-player-script.js
+
+# prisma / database
+prisma/dev.db
+prisma/dev.db-journal
+
+# --- Logs ---
+*.log
