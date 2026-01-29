@@ -8,14 +8,17 @@ export async function GET() {
   
   const { codeVerifier, codeChallenge } = generatePKCE();
   const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Debes estar logueado" }, { status: 401 });
+  }
 
   const params = new URLSearchParams({
     client_key: process.env.TIKTOK_CLIENT_KEY!,
     response_type: "code",
-    scope: "user.info.basic",
+    scope: "user.info.basic,video.publish",
     redirect_uri: process.env.TIKTOK_REDIRECT_URI!,
-    state: "test",
-    code_challenge: codeChallenge, // 👈 typo corregido
+    state: session.user.id,
+    code_challenge: codeChallenge,
     code_challenge_method: "S256",
   });
 
@@ -23,10 +26,9 @@ export async function GET() {
     `https://www.tiktok.com/v2/auth/authorize/?${params.toString()}`
   );
 
-  // 🔐 Guardamos el code_verifier SOLO en cookie (no DB)
   response.cookies.set("tiktok_pkce", codeVerifier, {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === "production" || process.env.NEXTAUTH_URL?.startsWith("https"),
     path: "/",
     maxAge: 60 * 5,
     sameSite: "lax",

@@ -11,8 +11,7 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   const userId = searchParams.get("state");
 
-
-  if (!session?.user?.id || !userId) {
+  if (!session?.user?.id || !userId || session.user.id !== userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -32,7 +31,6 @@ export async function GET(req: Request) {
     );
   }
 
-  // 🔁 Intercambio code → tokens
   const tokenRes = await fetch("https://open.tiktokapis.com/v2/oauth/token/", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -52,7 +50,6 @@ export async function GET(req: Request) {
     return NextResponse.json(tokenData, { status: 400 });
   }
 
-  // 🗄️ Guardar tokens en Prisma
   await prisma.tikTokAccount.upsert({
     where: { userId: session.user.id },
     update: {
@@ -71,7 +68,8 @@ export async function GET(req: Request) {
   });
 
   // 🧹 borrar PKCE
-  const res = NextResponse.redirect("/dashboard");
+  const origin = new URL(req.url).origin; 
+  const res = NextResponse.redirect(`${origin}/dashboard`);
   res.cookies.delete("tiktok_pkce");
 
   return res;
