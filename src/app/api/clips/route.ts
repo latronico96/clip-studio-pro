@@ -6,6 +6,14 @@ import { processVideoClip } from "@/lib/video/processor";
 import fs from 'fs';
 import path from 'path';
 
+
+export const LAYOUT_MODES = ['landscape', 'portrait-crop', 'portrait-fit'] as const;
+export type LayoutMode = typeof LAYOUT_MODES[number];
+
+export function isLayoutMode(value: string): value is LayoutMode {
+  return LAYOUT_MODES.includes(value as LayoutMode);
+}
+
 export async function GET() {
     const session = await getServerSession(authOptions);
 
@@ -56,7 +64,6 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
         const {
-            videoUrl,
             videoId,
             title,
             startTime,
@@ -133,7 +140,9 @@ async function processClipInBackground(clipId: string) {
             url: videoUrl,
             startTime: clip.startTime,
             endTime: clip.endTime,
-            layoutMode: clip.layoutMode as any,
+            layoutMode: isLayoutMode(clip.layoutMode)
+                ? clip.layoutMode
+                : "landscape",
             clipId: clip.id
         });
 

@@ -4,6 +4,7 @@ import ytdl from '@distube/ytdl-core';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { LAYOUT_MODES, LayoutMode } from '@/app/api/clips/route';
 
 // Setup FFmpeg path for serverless environments and local dev
 let ffmpegPath = ffmpegInstaller;
@@ -30,6 +31,9 @@ if (ffmpegPath) {
     ffmpeg.setFfmpegPath(ffmpegPath);
 }
 
+export function isLayoutMode(value: string): value is LayoutMode {
+    return LAYOUT_MODES.includes(value as LayoutMode);
+}
 export interface RenderOptions {
     url: string;
     startTime: number;

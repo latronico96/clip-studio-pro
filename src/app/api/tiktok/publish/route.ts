@@ -72,14 +72,22 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, result });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err);
 
     const error = err instanceof Error ? err : new Error(String(err));
 
-    if (err instanceof Error && "clipId" in err) {
+    type ClipError = Error & { clipId: string };
+
+    if (
+      err instanceof Error &&
+      "clipId" in err &&
+      typeof (err as Record<string, unknown>).clipId === "string"
+    ) {
+      const clipErr = err as ClipError;
+
       await prisma.clip.update({
-        where: { id: (err as any).clipId },
+        where: { id: clipErr.clipId },
         data: { status: "error" },
       });
     }
@@ -95,7 +103,7 @@ export async function POST(req: Request) {
  * Construye una URL pública al clip renderizado
  * (S3, R2, Cloudinary, etc)
  */
-function buildPublicClipUrl(clip: any): string {
+function buildPublicClipUrl(clip: { id: string }): string {
   // placeholder — depende de dónde guardes los videos
   return `https://cdn.tusitio.com/clips/${clip.id}.mp4`;
 }

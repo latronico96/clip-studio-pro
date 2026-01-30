@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { Timeline } from "@/components/Timeline";
-import { Save, Youtube, Smartphone, Check, Play, LayoutDashboard, Settings, LogOut, Scissors } from "lucide-react";
+import { Save, Youtube, Smartphone, Check, Scissors } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 
@@ -231,7 +231,7 @@ function EditorContent() {
                                 <span>Edición Inteligente</span>
                             </h4>
                             <p className="text-xs text-description leading-relaxed italic">
-                                "Estamos analizando el encuadre para que el sujeto siempre esté en el centro."
+                                &quot;Estamos analizando el encuadre para que el sujeto siempre esté en el centro.&quot;
                             </p>
                         </div>
                     </div>

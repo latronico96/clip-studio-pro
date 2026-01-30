@@ -35,7 +35,7 @@ export default function ClipsPage() {
         }, 3000);
 
         return () => clearInterval(interval);
-    }, [clips.length]); // Poll if length changes or logic decides
+    }, [clips]);
 
 
     return (

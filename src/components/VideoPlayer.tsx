@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
-import { Play, RotateCcw, AlertTriangle, ExternalLink, RefreshCw } from "lucide-react";
+import { useRef, useEffect, useMemo } from "react";
+import { RotateCcw, AlertTriangle, ExternalLink } from "lucide-react";
 
 interface VideoPlayerProps {
     url: string;
@@ -13,18 +13,17 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ url, startTime = 0, endTime, layoutMode = 'landscape' }: VideoPlayerProps) {
-    const [isClient, setIsClient] = useState(false);
-    const [videoId, setVideoId] = useState<string | null>(null);
+    const isClient = typeof window !== "undefined";
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
-    useEffect(() => {
-        setIsClient(true);
-        if (url) {
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            const id = (match && match[2].length === 11) ? match[2] : null;
-            setVideoId(id);
-        }
+    const videoId = useMemo(() => {
+        if (!url) return null;
+
+        const regExp =
+            /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+
+        return match && match[2].length === 11 ? match[2] : null;
     }, [url]);
 
     // Seek to start whenever startTime is adjusted WITHOUT reloading the whole iframe

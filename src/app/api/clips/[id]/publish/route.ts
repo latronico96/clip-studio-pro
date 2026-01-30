@@ -5,72 +5,73 @@ import { NextResponse } from "next/server";
 import { uploadYouTubeShort } from "@/lib/google/youtube";
 import fs from "fs";
 import path from "path";
+import { uploadTikTokVideo } from "@/lib/tiktok/publish";
 
-export async function POST(
-    request: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
+interface PublishRequestBody {
+    youTube?: string | null | undefined;
+    tiktok?: string | null | undefined;
+    platform: 'youtube' | 'tiktok' | 'both';
+}
+
+
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions);
     const { id: clipId } = await params;
 
-    if (!session || !session.user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const body = await request.json();
-        const { platform } = body;
+        const { platform } = body; // 'youtube', 'tiktok', o 'both'
 
         const clip = await prisma.clip.findUnique({
             where: { id: clipId },
-            include: { videoMetadata: true }
         });
 
-        if (!clip) {
-            return NextResponse.json({ error: "Clip not found" }, { status: 404 });
+        if (!clip || clip.status !== "success") {
+            return NextResponse.json({ error: "Clip not ready" }, { status: 400 });
         }
 
-        if (clip.status !== "success") {
-            return NextResponse.json({ error: "Clip is not ready for publishing" }, { status: 400 });
+        const videoPath = path.join(process.cwd(), 'public', 'renders', `${clip.id}.mp4`);
+        if (!fs.existsSync(videoPath)) {
+            return NextResponse.json({ error: "Archivo de video no encontrado" }, { status: 404 });
         }
+        console.log(videoPath);
+        const videoBuffer = await fs.promises.readFile(videoPath);
 
-        // Get Google Tokens
-        const account = await prisma.account.findFirst({
-            where: { userId: session.user.id, provider: "google" }
-        });
+        const results: PublishRequestBody = { platform: platform };
 
-        if (!account || !account.access_token) {
-            return NextResponse.json({ error: "YouTube account not connected" }, { status: 400 });
-        }
-
-        if (platform === "youtube") {
-            const publicDir = path.join(process.cwd(), 'public', 'renders');
-            const videoPath = path.join(publicDir, `${clip.id}.mp4`);
-
-            if (!fs.existsSync(videoPath)) {
-                return NextResponse.json({ error: "El video aún no ha terminado de renderizarse." }, { status: 400 });
-            }
-
-            const videoBuffer = await fs.promises.readFile(videoPath);
-
-            try {
-                const result = await uploadYouTubeShort(account.access_token, videoBuffer, {
+        if (platform === "youtube" || platform === "both") {
+            const googleAcc = await prisma.account.findFirst({
+                where: { userId: session.user.id, provider: "google" }
+            });
+            if (googleAcc?.access_token) {
+                const yt = await uploadYouTubeShort(googleAcc.access_token, videoBuffer, {
                     title: clip.title,
-                    description: `Clip creado con ClipStudio Pro de forma automática.`
+                    description: "Publicado vía ClipStudio Pro"
                 });
-
-                return NextResponse.json({ success: true, youtubeId: result.id });
-            } catch (err: any) {
-                return NextResponse.json({
-                    error: "YouTube API Error: " + err.message
-                }, { status: 500 });
+                results.youTube = yt.id;
             }
         }
 
-        return NextResponse.json({ error: "Platform not supported yet" }, { status: 400 });
+        if (platform === "tiktok" || platform === "both") {
+            const tiktokAcc = await prisma.tikTokAccount.findUnique({
+                where: { userId: session.user.id }
+            });
 
-    } catch (error) {
-        console.error("Publishing error:", error);
-        return NextResponse.json({ error: "Failed to publish" }, { status: 500 });
+            // Nota: Aquí deberías verificar si el token expiró y refrescarlo antes de subir
+            if (tiktokAcc?.accessToken) {
+                const tt = await uploadTikTokVideo(tiktokAcc.accessToken, videoBuffer, clip.title);
+                results.tiktok = tt.publish_id;
+            }
+        }
+
+        return NextResponse.json({ success: true, results });
+
+    } catch (error: unknown) {
+        console.error("Error publicando:", error);
+        const message =
+            error instanceof Error ? error.message : "Error inesperado";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

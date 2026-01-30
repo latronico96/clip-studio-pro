@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, Clock, Share2, Youtube, AlertCircle, Smartphone, Monitor, Download, ExternalLink, Loader2 } from "lucide-react";
+import { CheckCircle2, Clock, Share2, Youtube, AlertCircle, Smartphone, Monitor, Download, Loader2 } from "lucide-react";
 import { Clip } from "@/types/clip";
 
 interface ClipCardProps {
@@ -7,7 +7,7 @@ interface ClipCardProps {
 }
 
 export function ClipCard({ clip }: ClipCardProps) {
-    const [isPublishing, setIsPublishing] = useState(false);
+    const [isPublishing, setIsPublishing] = useState<string | null>(null); // 'youtube', 'tiktok', 'both' o null
     const [publishedPlatforms, setPublishedPlatforms] = useState<string[]>([]);
 
     const statusColors = {
@@ -27,7 +27,7 @@ export function ClipCard({ clip }: ClipCardProps) {
     };
 
     const handlePublish = async (platform: string) => {
-        setIsPublishing(true);
+        setIsPublishing(platform);
         try {
             const res = await fetch(`/api/clips/${clip.id}/publish`, {
                 method: "POST",
@@ -36,21 +36,23 @@ export function ClipCard({ clip }: ClipCardProps) {
             });
 
             const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Error al publicar");
 
-            if (!res.ok) {
-                throw new Error(data.error || "Error al publicar");
+            if (platform === 'both') {
+                setPublishedPlatforms(prev => [...new Set([...prev, ...clip.platforms])]);
+                alert("¡Publicado en todas las plataformas!");
+            } else {
+                setPublishedPlatforms(prev => [...prev, platform]);
+                alert(`¡Publicado con éxito en ${platform.toUpperCase()}!`);
             }
-
-            setPublishedPlatforms(prev => [...prev, platform]);
-            alert("¡Publicado con éxito en YouTube!");
-        } catch (err: any) {
-            console.error(err);
-            alert("Error: " + err.message);
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : "Error inesperado";
+            alert("Error: " + message);
         } finally {
-            setIsPublishing(false);
+            setIsPublishing(null);
         }
     };
-
 
     const handleDownload = () => {
         const link = document.createElement('a');
@@ -90,7 +92,6 @@ export function ClipCard({ clip }: ClipCardProps) {
             </div>
 
             <div className="flex flex-col space-y-4 mt-8 relative z-10">
-                {/* Progress indicator if processing */}
                 {clip.status === 'processing' && (
                     <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
                         <div className="bg-purple-500 h-full w-2/3 animate-pulse" />
@@ -99,15 +100,40 @@ export function ClipCard({ clip }: ClipCardProps) {
 
                 <div className="flex items-center justify-between pt-5 border-t border-white/5">
                     <div className="flex space-x-2">
-                        {clip.platforms.map(platform => (
-                            <div key={platform} className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all ${publishedPlatforms.includes(platform) ? 'bg-green-500/20 border-green-500/30' : 'bg-white/5 border-white/5'}`}>
-                                {platform === 'youtube' ? (
-                                    <Youtube size={16} className={publishedPlatforms.includes(platform) ? 'text-green-500' : 'text-[#FF0000]'} />
-                                ) : (
-                                    <svg viewBox="0 0 24 24" className={`w-4 h-4 ${publishedPlatforms.includes(platform) ? 'fill-green-500' : 'fill-white'}`}><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .8.11V9.42a7.27 7.27 0 0 0-10.23 6.51 7.28 7.28 0 0 0 14.15 1.6V7.06a8.29 8.29 0 0 0 5.39 1.61V5.2a4.27 4.27 0 0 1-3.77-2.76z" /></svg>
-                                )}
-                            </div>
-                        ))}
+                        {clip.platforms.map(platform => {
+                            const isThisPublishing = isPublishing === platform || isPublishing === 'both';
+                            const isAlreadyPublished = publishedPlatforms.includes(platform);
+
+                            return (
+                                <button
+                                    key={platform}
+                                    disabled={!!isPublishing || isAlreadyPublished || clip.status !== 'success'}
+                                    onClick={() => handlePublish(platform)}
+                                    className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all relative
+                    ${isAlreadyPublished
+                                            ? 'bg-green-500/20 border-green-500/30 cursor-default'
+                                            : 'bg-white/5 border-white/5 hover:border-primary/50 hover:bg-white/10 active:scale-90 cursor-pointer'}
+                    ${isThisPublishing ? 'opacity-50 cursor-wait' : ''}
+                `}
+                                    title={isAlreadyPublished ? `Publicado en ${platform}` : `Publicar en ${platform}`}
+                                >
+                                    {isThisPublishing ? (
+                                        <Loader2 size={16} className="animate-spin text-white" />
+                                    ) : platform === 'youtube' ? (
+                                        <Youtube size={18} className={isAlreadyPublished ? 'text-green-500' : 'text-[#FF0000]'} />
+                                    ) : (
+                                        <svg viewBox="0 0 24 24" className={`w-4 h-4 ${isAlreadyPublished ? 'fill-green-500' : 'fill-white'}`}>
+                                            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .8.11V9.42a7.27 7.27 0 0 0-10.23 6.51 7.28 7.28 0 0 0 14.15 1.6V7.06a8.29 8.29 0 0 0 5.39 1.61V5.2a4.27 4.27 0 0 1-3.77-2.76z" />
+                                        </svg>
+                                    )}
+                                    {isAlreadyPublished && (
+                                        <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-0.5">
+                                            <CheckCircle2 size={8} className="text-white" />
+                                        </div>
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -121,8 +147,8 @@ export function ClipCard({ clip }: ClipCardProps) {
                                     <Download size={18} />
                                 </button>
                                 <button
-                                    disabled={isPublishing}
-                                    onClick={() => handlePublish('youtube')}
+                                    disabled={isPublishing !== null}
+                                    onClick={() => handlePublish('both')}
                                     className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${isPublishing ? 'bg-zinc-800 text-gray-500' : 'bg-primary text-white hover:shadow-lg hover:shadow-primary/30 active:scale-95'}`}
                                 >
                                     {isPublishing ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}

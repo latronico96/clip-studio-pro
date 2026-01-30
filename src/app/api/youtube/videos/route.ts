@@ -5,6 +5,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { google } from "googleapis";
 
+type TokenUpdateData = {
+  access_token: string;
+  expires_at: number;
+  refresh_token?: string;
+};
+
 export async function GET() {
     const session = await getServerSession(authOptions);
 
@@ -50,7 +56,7 @@ export async function GET() {
 
             // Update the tokens in the database
             // Note: Google might return a new refresh_token, or just a new access_token
-            const updateData: any = {
+            const updateData: TokenUpdateData = {
                 access_token: credentials.access_token,
                 expires_at: Math.floor((credentials.expiry_date || Date.now() + 3600 * 1000) / 1000),
             };
@@ -85,18 +91,28 @@ export async function GET() {
         console.log("Videos API: Fetching videos for user", session.user.id);
         const videos = await listUserVideos(accessToken);
         return NextResponse.json(videos);
-    } catch (error: any) {
-        console.error("YouTube API Error Details:", error);
+    } catch (err: unknown) {
+        console.error("YouTube API Error Details:", err);
 
-        // If it's a 401, it means the token expired (and refresh failed somehow) or was revoked
-        if (error.code === 401 || error.status === 401) {
-            return NextResponse.json({
-                error: "Auth token expired",
-                details: "Tu sesión de Google ha caducado o los permisos fueron revocados."
-            }, { status: 401 });
+        if (err instanceof Error) {
+            // Si vos mismo lanzaste errores con status/code
+            const anyErr = err as Error & { status?: number; code?: number };
+
+            if (anyErr.status === 401 || anyErr.code === 401) {
+                return NextResponse.json(
+                    {
+                        error: "Auth token expired",
+                        details: "Tu sesión de Google ha caducado o los permisos fueron revocados.",
+                    },
+                    { status: 401 }
+                );
+            }
         }
 
-        return NextResponse.json({ error: "Failed to fetch videos" }, { status: 500 });
+        return NextResponse.json(
+            { error: "Failed to fetch videos" },
+            { status: 500 }
+        );
     }
 
 }

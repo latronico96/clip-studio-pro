@@ -67,9 +67,7 @@ export async function GET(req: Request) {
     },
   });
 
-  // 🧹 borrar PKCE
-  const origin = new URL(req.url).origin; 
-  const res = NextResponse.redirect(`${origin}/dashboard`);
+  const res = NextResponse.redirect(`${process.env.NEXTAUTH_URL}/videos`);
   res.cookies.delete("tiktok_pkce");
 
   return res;

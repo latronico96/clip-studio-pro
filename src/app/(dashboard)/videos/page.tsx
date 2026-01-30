@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Upload, Youtube, Play, Plus, Loader2, PlusCircle, AlertCircle } from "lucide-react";
+import Image from "next/image";
+import { Upload, Youtube, Loader2, PlusCircle, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -34,9 +35,11 @@ export default function VideosPage() {
                     throw new Error(data.error || "Failed to fetch videos");
                 }
                 setVideos(data);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error(err);
-                setError(err.message || "No se pudieron cargar los videos. Asegúrate de tener una cuenta de YouTube conectada.");
+                const message =
+                    err instanceof Error ? err.message : "Error inesperado";
+                setError(message || "No se pudieron cargar los videos. Asegúrate de tener una cuenta de YouTube conectada.");
             } finally {
                 setLoading(false);
             }
@@ -123,12 +126,13 @@ export default function VideosPage() {
                             onClick={() => handleCreateClip(video.id, video.duration)}
                         >
                             <div className="relative aspect-video">
-                                <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-                                    <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-xl scale-90 group-hover:scale-100 transition-transform">
-                                        <Play size={24} className="fill-white text-white ml-1" />
-                                    </div>
-                                </div>
+                                <Image
+                                    src={video.thumbnail}
+                                    alt={video.title}
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, 33vw"
+                                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                />
                                 <div className="absolute top-4 left-4">
                                     <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                                         <span className="text-[10px] font-bold text-white uppercase tracking-widest">YouTube</span>
