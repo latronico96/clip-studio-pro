@@ -1,0 +1,25 @@
+# Builder stage
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+# Copiar solo archivos de módulos primero para aprovechar cache
+COPY go.mod go.sum ./
+RUN go mod tidy
+
+# Copiar el resto del código
+COPY . .
+
+# Compilar binario estático
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o worker .
+
+# Final stage
+FROM alpine:3.19
+
+WORKDIR /app
+COPY --from=builder /app/worker .
+
+# Dependencias mínimas de Alpine para logs y TLS si es necesario
+RUN apk add --no-cache ca-certificates
+
+CMD ["./worker"]
