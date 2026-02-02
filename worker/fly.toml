@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for worker-white-glitter-4334 on 2026-02-02T09:29:23-03:00
+# fly.toml app configuration file generated for clip-studio-pro-worker on 2026-02-02T11:29:23-03:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'worker-white-glitter-4334'
+app = 'clip-studio-pro-worker'
 primary_region = 'gru'
 
 [build]

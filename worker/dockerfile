@@ -1,5 +1,5 @@
 # Builder stage
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ FROM alpine:3.19
 WORKDIR /app
 COPY --from=builder /app/worker .
 
-# Dependencias mínimas de Alpine para logs y TLS si es necesario
+# Dependencias mínimas de Alpine para TLS y logs
 RUN apk add --no-cache ca-certificates
 
 CMD ["./worker"]
