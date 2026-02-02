@@ -15,7 +15,7 @@ export default function ClipsPage() {
         const fetchClips = async () => {
             try {
                 const res = await fetch("/api/clips");
-                if (!res.ok) throw new Error("Failed");
+                if (!res.ok) throw new Error("FAILED");
                 const data = await res.json();
                 setClips(data);
             } catch (err) {
@@ -28,7 +28,7 @@ export default function ClipsPage() {
 
         // Poll for updates if there are clips in progress
         const interval = setInterval(() => {
-            const hasIncomplete = clips.some(c => c.status === "pending" || c.status === "processing");
+            const hasIncomplete = clips.some(c => c.status === "PENDING" || c.status === "PROCESSING");
             if (hasIncomplete || clips.length === 0) {
                 fetchClips();
             }

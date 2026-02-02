@@ -1,0 +1,45 @@
+package main
+
+import (
+	"log"
+	"time"
+)
+
+func StartPolling(client *BackendClient, interval int, workerID string) {
+	log.Println("[WORKER] Polling started")
+
+	for {
+		job, err := client.FetchNextJob()
+		if err != nil {
+			log.Println("[WORKER] fetch error:", err)
+			time.Sleep(time.Duration(interval) * time.Second)
+			continue
+		}
+
+		if job == nil {
+			time.Sleep(time.Duration(interval) * time.Second)
+			continue
+		}
+
+		log.Printf("[WORKER] Job received: id=%s type=%s\n", job.ID, job.Type)
+
+		stopHB := make(chan struct{})
+		go StartHeartbeat(client, job.ID, workerID, stopHB)
+
+		err = ProcessJob(job)
+
+		close(stopHB)
+
+		if err != nil {
+			client.FailJob(job.ID, err)
+		} else {
+			client.CompleteJob(
+				job.ID,
+				map[string]any{
+					"message": "processed successfully",
+				},
+				workerID,
+			)
+		}
+	}
+}

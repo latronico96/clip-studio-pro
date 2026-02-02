@@ -98,7 +98,7 @@ export async function POST(request: Request) {
                 endTime,
                 title: title || "Sin título",
                 platforms: "youtube,tiktok", // Default targets
-                status: "pending",
+                status: "PENDING",
                 layoutMode: layoutMode
             }
         });
@@ -129,7 +129,7 @@ async function processClipInBackground(clipId: string) {
         // Step 1: Processing
         await prisma.clip.update({
             where: { id: clipId },
-            data: { status: "processing" }
+            data: { status: "PROCESSING" }
         });
         console.log(`[RENDER ENGINE] El Clip ${clipId} está siendo procesado por FFmpeg con modo: ${clip.layoutMode}...`);
 

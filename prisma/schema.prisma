@@ -77,7 +77,7 @@ model Clip {
   startTime       Float
   endTime         Float
   title           String
-  status          String   @default("pending") // pending, uploading, success, error
+  status          String   @default("PENDING") // PENDING, uploading, success, error
   platforms       String   // comma separated list: "youtube,tiktok"
   layoutMode      String   @default("landscape") // landscape, portrait-crop, portrait-fit
   createdAt       DateTime @default(now())
@@ -98,3 +98,20 @@ model TikTokAccount {
   user User @relation(fields: [userId], references: [id])
 }
 
+model Job {
+  id        String   @id @default(uuid())
+  type      String
+  payload   Json
+  status    String   @default("PENDING") // PENDING | PROCESSING | DONE | FAILED
+  lockedBy  String?
+  lockedAt  DateTime?
+  lastHeartbeat DateTime?
+  error     String?
+  userId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  result     Json?
+  finishedAt DateTime?
+  attempts   Int      @default(0)
+  maxAttempts Int     @default(3)
+}

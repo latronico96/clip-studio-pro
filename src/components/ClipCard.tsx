@@ -92,7 +92,7 @@ export function ClipCard({ clip }: ClipCardProps) {
             </div>
 
             <div className="flex flex-col space-y-4 mt-8 relative z-10">
-                {clip.status === 'processing' && (
+                {clip.status === 'PROCESSING' && (
                     <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
                         <div className="bg-purple-500 h-full w-2/3 animate-pulse" />
                     </div>
