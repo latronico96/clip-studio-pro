@@ -11,19 +11,19 @@ export function ClipCard({ clip }: ClipCardProps) {
     const [publishedPlatforms, setPublishedPlatforms] = useState<string[]>([]);
 
     const statusColors = {
-        pending: "bg-blue-500/10 text-blue-500",
-        processing: "bg-purple-500/10 text-purple-500",
-        uploading: "bg-yellow-500/10 text-yellow-500",
-        success: "bg-green-500/10 text-green-500",
-        error: "bg-red-500/10 text-red-500",
+        PENDING: "bg-blue-500/10 text-blue-500",
+        PROCESSING: "bg-purple-500/10 text-purple-500",
+        UPLOADING: "bg-yellow-500/10 text-yellow-500",
+        SUCCESS: "bg-green-500/10 text-green-500",
+        ERROR: "bg-red-500/10 text-red-500",
     };
 
     const statusIcons = {
-        pending: <Clock size={14} />,
-        processing: <div className="w-3 h-3 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />,
-        uploading: <div className="w-3 h-3 border-2 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin" />,
-        success: <CheckCircle2 size={14} />,
-        error: <AlertCircle size={14} />,
+        PENDING: <Clock size={14} />,
+        PROCESSING: <div className="w-3 h-3 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />,
+        UPLOADING: <div className="w-3 h-3 border-2 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin" />,
+        SUCCESS: <CheckCircle2 size={14} />,
+        ERROR: <AlertCircle size={14} />,
     };
 
     const handlePublish = async (platform: string) => {
@@ -65,7 +65,7 @@ export function ClipCard({ clip }: ClipCardProps) {
 
     return (
         <div className="glass rounded-[28px] p-6 border-white/5 hover:border-primary/30 transition-all group relative overflow-hidden">
-            {clip.status === 'success' && (
+            {clip.status === 'SUCCESS' && (
                 <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
                     <CheckCircle2 size={120} className="text-green-500" />
                 </div>
@@ -87,7 +87,7 @@ export function ClipCard({ clip }: ClipCardProps) {
                 </div>
                 <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest border border-white/5 ${statusColors[clip.status]}`}>
                     {statusIcons[clip.status]}
-                    <span>{clip.status === 'success' ? 'Listo' : clip.status}</span>
+                    <span>{clip.status === 'SUCCESS' ? 'Listo' : clip.status}</span>
                 </div>
             </div>
 
@@ -107,7 +107,7 @@ export function ClipCard({ clip }: ClipCardProps) {
                             return (
                                 <button
                                     key={platform}
-                                    disabled={!!isPublishing || isAlreadyPublished || clip.status !== 'success'}
+                                    disabled={!!isPublishing || isAlreadyPublished || clip.status !== 'SUCCESS'}
                                     onClick={() => handlePublish(platform)}
                                     className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all relative
                     ${isAlreadyPublished
@@ -137,7 +137,7 @@ export function ClipCard({ clip }: ClipCardProps) {
                     </div>
 
                     <div className="flex items-center space-x-2">
-                        {clip.status === 'success' ? (
+                        {clip.status === 'SUCCESS' ? (
                             <>
                                 <button
                                     onClick={handleDownload}

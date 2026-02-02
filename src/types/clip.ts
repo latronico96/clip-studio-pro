@@ -1,10 +1,10 @@
 export interface Clip {
     id: string;
     videoId: string;
-    startTime: number; // in seconds
-    endTime: number; // in seconds
+    startTime: number;
+    endTime: number;
     title: string;
-    status: 'PENDING' | 'PROCESSING' | 'uploading' | 'success' | 'error';
+    status: 'PENDING' | 'PROCESSING' | 'UPLOADING' | 'SUCCESS' | 'ERROR';
     platforms: ('youtube' | 'tiktok')[];
     verticalMode?: boolean;
     url?: string;
