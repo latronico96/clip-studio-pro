@@ -10,6 +10,9 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<Params> }
 ) {
+  console.log("=== [COMPLETE JOB] Start ===");
+  console.log("[COMPLETE JOB] Request URL:", req.url);
+  console.log("[COMPLETE JOB] Request headers:", Object.fromEntries(req.headers));
   if (!verifyWorker(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

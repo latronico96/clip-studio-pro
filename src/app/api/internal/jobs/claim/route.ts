@@ -3,6 +3,10 @@ import { prisma } from "@/lib/db";
 import { verifyWorker } from "@/lib/workerAuth";
 
 export async function POST(req: NextRequest) {
+  console.log("=== [CLAIM JOB] Start ===");
+  console.log("[CLAIM JOB] Request URL:", req.url);
+  console.log("[CLAIM JOB] Request headers:", Object.fromEntries(req.headers));
+
   const isValidWorker = verifyWorker(req);
   if (!isValidWorker) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
