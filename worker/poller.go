@@ -27,7 +27,7 @@ func StartPolling(client *BackendClient, interval int, workerID string) {
 		stopHB := make(chan struct{})
 		go StartHeartbeat(client, job.ID, workerID, stopHB)
 
-		err = ProcessJob(job)
+		err = ProcessJob(job, client)
 
 		close(stopHB)
 

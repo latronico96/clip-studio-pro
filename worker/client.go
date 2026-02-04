@@ -170,3 +170,29 @@ func (c *BackendClient) Heartbeat(jobID string, workerID string) error {
 
 	return nil
 }
+
+func (c *BackendClient) UpdateProgress(jobID string, progress int) error {
+	body, _ := json.Marshal(map[string]any{
+		"progress": progress,
+	})
+
+	req, _ := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/api/internal/jobs/%s/progress", c.baseURL, jobID),
+		bytes.NewBuffer(body),
+	)
+
+	c.auth(req)
+
+	res, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode >= 300 {
+		return fmt.Errorf("progress failed: %s", res.Status)
+	}
+
+	return nil
+}
