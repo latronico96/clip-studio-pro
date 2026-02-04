@@ -27,21 +27,15 @@ func StartPolling(client *BackendClient, interval int, workerID string) {
         stopHB := make(chan struct{})
         go StartHeartbeat(client, job.ID, workerID, stopHB)
 
-        err = func() error {
-            defer close(stopHB)
-            return ProcessJob(job, client)
-        }()
+        result, err := func() (map[string]any, error) {
+    defer close(stopHB)
+    return ProcessJob(job, client)
+}()
 
-        if err != nil {
-            client.FailJob(job.ID, err)
-        } else {
-            client.CompleteJob(
-                job.ID,
-                map[string]any{
-                    "message": "processed successfully",
-                },
-                workerID,
-            )
-        }
+if err != nil {
+    client.FailJob(job.ID, err)
+} else {
+    client.CompleteJob(job.ID, result, workerID)
+}
     }
 }
