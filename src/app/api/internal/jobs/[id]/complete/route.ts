@@ -17,18 +17,18 @@ export async function POST(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-const workerId = req.headers.get("x-worker-id");
-
-const job = await prisma.job.findUnique({
-  where: { id: jobId },
-  select: { lockedBy: true, status: true }
-});
-
-if (!job || job.lockedBy !== workerId) {
-  return NextResponse.json({ error: "not job owner" }, { status: 403 });
-}
-
+  const workerId = req.headers.get("x-worker-id");
   const { id: jobId } = await context.params;
+
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    select: { lockedBy: true, status: true }
+  });
+
+  if (!job || job.lockedBy !== workerId) {
+    return NextResponse.json({ error: "not job owner" }, { status: 403 });
+  }
+
   const body = await req.json().catch(() => null);
   if (!body || !body.status) {
     return NextResponse.json(
