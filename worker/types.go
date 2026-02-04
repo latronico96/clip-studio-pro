@@ -8,8 +8,9 @@ type Job struct {
 }
 
 type JobPayload struct {
-	YoutubeVideoID string `json:"youtubeVideoId"`
-	Start          int    `json:"start"`
-	End            int    `json:"end"`
-	Platform       string `json:"platform"`
+	YoutubeVideoID     string `json:"youtubeVideoId"`
+	YoutubeAccessToken string `json:"youtubeAccessToken"`
+	Start              int    `json:"start"`
+	End                int    `json:"end"`
+	Platform           string `json:"platform"`
 }
