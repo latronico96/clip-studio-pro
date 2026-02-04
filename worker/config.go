@@ -13,7 +13,7 @@ type Config struct {
 }
 
 func LoadConfig() Config {
-	interval, _ := strconv.Atoi(getEnv("POLL_INTERVAL", "5"))
+	interval, _ := strconv.Atoi(getEnv("POLL_INTERVAL", "30"))
 
 	return Config{
 		BackendURL:   getEnv("BACKEND_URL", "http://localhost:8080"),

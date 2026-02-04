@@ -11,13 +11,14 @@ func StartPolling(client *BackendClient, interval int, workerID string) {
 	for {
 		job, err := client.FetchNextJob()
 		if err != nil {
-			log.Println("[WORKER] fetch error:", err)
+			log.Println("[WORKER] error fetching job:", err)
 			time.Sleep(time.Duration(interval) * time.Second)
 			continue
 		}
 
 		if job == nil {
-			time.Sleep(time.Duration(interval) * time.Second)
+			log.Println("[WORKER] no jobs, sleeping...")
+			time.Sleep(time.Duration(interval) * time.Second * 3)
 			continue
 		}
 

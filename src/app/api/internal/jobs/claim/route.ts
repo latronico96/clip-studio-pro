@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import type { Job } from "@prisma/client";
 import { verifyWorker } from "@/lib/workerAuth";
 
 export async function POST(req: NextRequest) {
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  const job = await prisma.job.findFirst({
+  const job: Job | null = await prisma.job.findFirst({
     where: {
       status: "PENDING",
       lockedAt: null,
