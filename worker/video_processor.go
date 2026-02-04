@@ -10,7 +10,7 @@ func ProcessVideoClip(job *Job, client *BackendClient) (map[string]any, error) {
 
 	client.UpdateProgress(job.ID, 5)
 
-	input, err := video.DownloadYoutube(job.Payload.YoutubeVideoID)
+	input, err := video.DownloadYoutube(job.Payload.YoutubeVideoID, job.Payload.YoutubeAccessToken)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func ProcessVideoClip(job *Job, client *BackendClient) (map[string]any, error) {
 
 	client.UpdateProgress(job.ID, 100)
 
-    return map[string]any{
-        "url": url,
-    }, nil
+	return map[string]any{
+		"url": url,
+	}, nil
 }
