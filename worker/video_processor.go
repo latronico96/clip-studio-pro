@@ -29,9 +29,9 @@ func ProcessVideoClip(job *Job, client *BackendClient) error {
 		return err
 	}
 
-	client.CompleteJob(job.ID, map[string]any{
-		"url": url,
-	}, "")
+	client.UpdateProgress(job.ID, 100)
 
-	return nil
+    return map[string]any{
+        "url": url,
+    }, nil
 }
