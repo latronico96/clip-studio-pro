@@ -1,40 +1,59 @@
 package video
 
 import (
-	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func UploadResult(path string, backendUrl string) (string, error) {
+	if path == "" {
+		return "", fmt.Errorf("path is required")
+	}
+	if backendUrl == "" {
+		return "", fmt.Errorf("backendUrl is required")
+	}
+
 	file, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
 	defer file.Close()
 
-	var buf bytes.Buffer
-	writer := multipart.NewWriter(&buf)
+	pr, pw := io.Pipe()
+	writer := multipart.NewWriter(pw)
+	errCh := make(chan error, 1)
 
-	part, err := writer.CreateFormFile("file", filepath.Base(path))
-	if err != nil {
-		return "", err
-	}
+	go func() {
+		defer pw.Close()
+		defer writer.Close()
 
-	if _, err := io.Copy(part, file); err != nil {
-		return "", err
-	}
+		part, err := writer.CreateFormFile("file", filepath.Base(path))
+		if err != nil {
+			errCh <- err
+			return
+		}
 
-	writer.Close()
+		if _, err := io.Copy(part, file); err != nil {
+			errCh <- err
+			return
+		}
+
+		errCh <- nil
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 
 	req, err := http.NewRequest(
 		"POST",
 		backendUrl+"/api/internal/upload",
-		&buf,
+		pr,
 	)
 	if err != nil {
 		return "", err
@@ -42,11 +61,16 @@ func UploadResult(path string, backendUrl string) (string, error) {
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	res, err := http.DefaultClient.Do(req)
+	client := &http.Client{Timeout: 2 * time.Minute}
+	res, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		return "", err
 	}
 	defer res.Body.Close()
+
+	if err := <-errCh; err != nil {
+		return "", err
+	}
 
 	if res.StatusCode >= 300 {
 		return "", fmt.Errorf("upload failed: %s", res.Status)
