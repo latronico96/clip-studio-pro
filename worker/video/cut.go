@@ -16,7 +16,8 @@ func CutVideo(input string, start, end int) (string, error) {
 		return "", fmt.Errorf("invalid time range: start=%d end=%d", start, end)
 	}
 
-	output := filepath.Join("/tmp", "clip-"+filepath.Base(input))
+	output := filepath.Join(input)
+	
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 

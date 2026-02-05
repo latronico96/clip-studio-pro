@@ -24,7 +24,13 @@ func ProcessVideoClip(job *Job, client *BackendClient) (map[string]any, error) {
 
 	client.UpdateProgress(job.ID, 80)
 
-	url, err := video.UploadResult(output, client.baseURL)
+	oauthClient := video.OAuthClientFromToken(job.Payload.YoutubeAccessToken)
+	ytService, err := video.NewYouTubeService(oauthClient)
+	if err != nil {
+		return nil, err
+	}
+	
+	url, err := video.UploadResult(output, ytService)
 	if err != nil {
 		return nil, err
 	}

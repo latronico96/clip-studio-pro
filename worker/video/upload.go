@@ -1,81 +1,36 @@
 package video
 
 import (
-	"context"
-	"fmt"
-	"io"
-	"mime/multipart"
-	"net/http"
 	"os"
-	"path/filepath"
-	"time"
+	"google.golang.org/api/youtube/v3"
 )
 
-func UploadResult(path string, backendUrl string) (string, error) {
-	if path == "" {
-		return "", fmt.Errorf("path is required")
-	}
-	if backendUrl == "" {
-		return "", fmt.Errorf("backendUrl is required")
-	}
-
+func UploadResult(path string, yt *youtube.Service) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
 	defer file.Close()
 
-	pr, pw := io.Pipe()
-	writer := multipart.NewWriter(pw)
-	errCh := make(chan error, 1)
+	video := &youtube.Video{
+		Snippet: &youtube.VideoSnippet{
+			Title:       "Clip generado automáticamente",
+			Description: "#Shorts generado por ClipStudio",
+			CategoryId:  "22",
+		},
+		Status: &youtube.VideoStatus{
+			PrivacyStatus: "public",
+		},
+	}
 
-	go func() {
-		defer pw.Close()
-		defer writer.Close()
+	resp, err := yt.Videos.Insert(
+		[]string{"snippet", "status"},
+		video,
+	).Media(file).Do()
 
-		part, err := writer.CreateFormFile("file", filepath.Base(path))
-		if err != nil {
-			errCh <- err
-			return
-		}
-
-		if _, err := io.Copy(part, file); err != nil {
-			errCh <- err
-			return
-		}
-
-		errCh <- nil
-	}()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-
-	req, err := http.NewRequest(
-		"POST",
-		backendUrl+"/api/internal/upload",
-		pr,
-	)
 	if err != nil {
 		return "", err
 	}
 
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	client := &http.Client{Timeout: 2 * time.Minute}
-	res, err := client.Do(req.WithContext(ctx))
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	if err := <-errCh; err != nil {
-		return "", err
-	}
-
-	if res.StatusCode >= 300 {
-		return "", fmt.Errorf("upload failed: %s", res.Status)
-	}
-
-	body, _ := io.ReadAll(res.Body)
-	return string(body), nil
+	return "https://www.youtube.com/watch?v=" + resp.Id, nil
 }
