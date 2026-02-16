@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyWorker } from "@/lib/workerAuth";
+import { JobStatus } from "@prisma/client";
 
 type Params = {
   id: string;
@@ -40,6 +41,7 @@ export async function POST(
   const { status, result, error } = body;
 
   if (status === "FAILED") {
+    const jobStatus = JobStatus.FAILED;
     const job = await prisma.job.findUnique({
       where: { id: jobId },
       select: {
@@ -52,11 +54,12 @@ export async function POST(
     if (!job) throw new Error("job not found");
 
     if (job.attempts + 1 < job.maxAttempts) {
+      const jobStatus = JobStatus.PENDING;
       await prisma.job.update({
         where: { id: jobId },
         data: {
           attempts: { increment: 1 },
-          status: "PENDING",
+          status: jobStatus,
           lockedBy: null,
           lockedAt: null,
           lastHeartbeat: null
@@ -70,7 +73,7 @@ export async function POST(
       where: { id: jobId },
       data: {
         attempts: { increment: 1 },
-        status: "DEAD" as const,
+        status: JobStatus.DEAD,
         finishedAt: new Date(),
         error
       }
@@ -85,11 +88,11 @@ export async function POST(
       { status: 400 }
     );
   }
-
+  const jobStatus = status === "COMPLETED" ? JobStatus.DONE : JobStatus.FAILED;
   await prisma.job.update({
     where: { id: jobId },
     data: {
-      status,
+      status: jobStatus,
       finishedAt: new Date(),
       lockedBy: null,
       lockedAt: null,

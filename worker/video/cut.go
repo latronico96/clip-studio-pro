@@ -52,9 +52,9 @@ func CutVideo(input string, start float64, end float64, layoutMode string) (stri
 	// ===== Args ffmpeg =====
 	args := []string{
 		"-y",
-		"-ss", fmt.Sprint(start),
-		"-to", fmt.Sprint(end),
-		"-i", absInput,
+		"-i", absInput, // El input va PRIMERO
+		"-ss", fmt.Sprintf("%f", start), // Seek después del input para mayor precisión con filtros
+		"-to", fmt.Sprintf("%f", end),
 	}
 
 	if videoFilter != "" {

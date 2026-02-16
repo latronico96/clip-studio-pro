@@ -64,7 +64,6 @@ export async function POST(request: Request) {
         console.log("videoId, videoUrl", body.videoId, body.videoUrl);
         const {
             thumbnail,
-            layoutMode = 'landscape',
             platforms,
             render,
             source,
@@ -103,7 +102,7 @@ export async function POST(request: Request) {
                 title: title || "Sin título",
                 platforms: Object.keys(platforms).join(","), // youtube,tiktok
                 status: "PENDING",
-                layoutMode: layoutMode
+                layoutMode: clip.layoutMode
             }
         });
 

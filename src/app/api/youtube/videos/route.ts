@@ -43,14 +43,16 @@ export async function GET() {
     if (isExpired && account.refresh_token) {
       const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET
+        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.NEXTAUTH_URL
       );
 
       oauth2Client.setCredentials({
         refresh_token: account.refresh_token,
       });
-
-      const { token } = await oauth2Client.getAccessToken();
+      console.log('refresh token:', oauth2Client.credentials.refresh_token);
+      const { credentials } = await oauth2Client.refreshAccessToken();
+      const token = credentials.access_token;
 
       if (!token) {
         return NextResponse.json(
@@ -63,9 +65,10 @@ export async function GET() {
         where: { id: account.id },
         data: {
           access_token: token,
-          expires_at: Math.floor(
-            (Date.now() + 3600_000) / 1000
-          ),
+          expires_at: credentials.expiry_date
+            ? Math.floor(credentials.expiry_date / 1000)
+            : Math.floor((Date.now() + 3600_000) / 1000),
+          refresh_token: credentials.refresh_token ?? account.refresh_token,
         },
       });
       accessToken = token;
@@ -83,6 +86,7 @@ export async function GET() {
       { status: 200 }
     );
   } catch (err) {
+    console.error(err);
     return NextResponse.json(
       {
         error: "INTERNAL_SERVER_ERROR",

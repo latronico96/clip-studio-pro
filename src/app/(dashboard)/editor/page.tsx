@@ -8,8 +8,8 @@ import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 
 const VideoPlayer = dynamic(
-  () => import("@/components/VideoPlayer"),
-  { ssr: false }
+    () => import("@/components/VideoPlayer"),
+    { ssr: false }
 );
 
 function EditorContent() {
@@ -24,25 +24,17 @@ function EditorContent() {
     const [showSuccess, setShowSuccess] = useState(false);
     const [duration, setDuration] = useState(urlDuration || 600);
     const [layoutMode, setLayoutMode] = useState<'landscape' | 'portrait-crop' | 'portrait-fit'>('portrait-crop');
-    const [platforms, ] = useState({
+    const [platforms,] = useState({
         youtube: true,
         tiktok: true,
     });
-    const [youtubeConfig, ] = useState({
+    const [youtubeConfig,] = useState({
         title,
         description: "",
         visibility: "public", // public | unlisted | private
         madeForKids: false,
     });
-    const [tiktokConfig, ] = useState({ caption: title });
-    const renderConfig = {
-        fps: 30,
-        resolution:
-            layoutMode === "landscape" ? "1920x1080" : "1080x1920",
-        audio: {
-            normalize: true,
-        },
-    };
+    const [tiktokConfig,] = useState({ caption: title });
     const workflowConfig = {
         autoPublish: true,
         generateThumbnail: true,
@@ -71,6 +63,14 @@ function EditorContent() {
                 urlObj.searchParams.get("v") ||
                 videoUrl.split("/").pop() ||
                 "";
+            const renderConfig = {
+                fps: 30,
+                resolution:
+                    layoutMode === "landscape" ? "1920x1080" : "1080x1920",
+                audio: {
+                    normalize: true,
+                },
+            };
             const res = await fetch("/api/clips", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
