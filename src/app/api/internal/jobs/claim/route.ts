@@ -11,9 +11,7 @@ type TokenUpdateData = {
 };
 
 export async function POST(req: NextRequest) {
-  console.log("=== [CLAIM JOB] Start ===");
-  console.log("[CLAIM JOB] Request URL:", req.url);
-  console.log("[CLAIM JOB] Request headers:", Object.fromEntries(req.headers));
+  process.stdout.write("=== [CLAIM JOB] Start ===");
 
   const isValidWorker = await verifyWorker(req);
   if (!isValidWorker) {
@@ -21,21 +19,21 @@ export async function POST(req: NextRequest) {
   }
 
   const workerId = req.headers.get("x-worker-id") ?? "unknown";
-  const STALE_MS: number = parseInt(process.env.STALE_MS ?? "60000");
+  const STALE_MS = parseInt(process.env.STALE_MS ?? "60000");
 
   await prisma.job.updateMany({
     where: {
       status: "PROCESSING",
       lastHeartbeat: {
-        lt: new Date(Date.now() - STALE_MS)
-      }
+        lt: new Date(Date.now() - STALE_MS),
+      },
     },
     data: {
       status: "PENDING",
       lockedBy: null,
       lockedAt: null,
-      lastHeartbeat: null
-    }
+      lastHeartbeat: null,
+    },
   });
 
   const job: Job | null = await prisma.job.findFirst({
@@ -67,22 +65,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ job: null });
   }
 
-  const youtubeAccessToken = job.userId
-    ? await getYouTubeAccessToken(job.userId)
-    : null;
+  const originalPayload = job.payload as Record<string, unknown>;
+  const platforms: string[] = (Array.isArray(originalPayload.platforms) ? originalPayload.platforms : []) as string[];
 
-  const payload = {
-    ...(job.payload as Record<string, unknown>),
-    youtubeAccessToken,
-  };
+  const auth: Record<string, unknown> = {};
 
-  console.log("[CLAIM JOB] Returning job:", job?.id ?? null);
-  console.log("=== [CLAIM JOB] End ===");
+  if (platforms.includes("youtube") && job.userId) {
+    const youtubeAccessToken = await getYouTubeAccessToken(job.userId);
+    if (youtubeAccessToken) {
+      auth.youtube = { accessToken: youtubeAccessToken };
+    }
+  }
+
+  process.stdout.write("[CLAIM JOB] Returning job: " + JSON.stringify(job.id));
+  process.stdout.write("=== [CLAIM JOB] End ===");
+  process.stdout.write("Job Payload: " +  JSON.stringify({
+    job: {
+      ...job,
+      payload: {
+        ...originalPayload,
+        auth,
+      },
+    },
+  }));
 
   return NextResponse.json({
     job: {
       ...job,
-      payload,
+      payload: {
+        ...originalPayload,
+        auth,
+      },
     },
   });
 }
@@ -134,8 +147,8 @@ async function getYouTubeAccessToken(userId: string): Promise<string | null> {
       });
 
       accessToken = credentials.access_token;
-    } catch (refreshError) {
-      console.error("Claim job: Failed to refresh token", refreshError);
+    } catch (err) {
+      console.error("Claim job: failed to refresh YouTube token", err);
       return null;
     }
   }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useEffect, useMemo } from "react";
-import { RotateCcw, AlertTriangle, ExternalLink } from "lucide-react";
+import { useRef, useEffect, useMemo, useState } from "react";
+import { RotateCcw, AlertTriangle } from "lucide-react";
 
 interface VideoPlayerProps {
     url: string;
@@ -12,32 +12,72 @@ interface VideoPlayerProps {
     layoutMode?: 'landscape' | 'portrait-crop' | 'portrait-fit';
 }
 
-export function VideoPlayer({ url, startTime = 0, endTime, layoutMode = 'landscape' }: VideoPlayerProps) {
+export default function VideoPlayer({ url, startTime = 0, endTime, layoutMode = 'landscape' }: VideoPlayerProps) {
     const isClient = typeof window !== "undefined";
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const [currentTime, setCurrentTime] = useState(0);
 
     const videoId = useMemo(() => {
         if (!url) return null;
-
-        const regExp =
-            /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
-
         return match && match[2].length === 11 ? match[2] : null;
     }, [url]);
 
-    // Seek to start whenever startTime is adjusted WITHOUT reloading the whole iframe
+    // 1. Loop para monitorear el progreso del video
+    useEffect(() => {
+        if (!isClient || !videoId) return;
+
+        const interval = setInterval(() => {
+            if (iframeRef.current) {
+                // Pedimos el tiempo actual a la API de YouTube
+                iframeRef.current.contentWindow?.postMessage(
+                    JSON.stringify({ event: "listening", id: 1 }), "*"
+                );
+                iframeRef.current.contentWindow?.postMessage(
+                    JSON.stringify({ event: "command", func: "getCurrentTime", args: [] }), "*"
+                );
+            }
+        }, 500); // Revisamos cada medio segundo
+
+        // Handler para recibir la respuesta de YouTube
+        const handleMessage = (event: MessageEvent) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.event === "infoDelivery" && data.info && data.info.currentTime) {
+                    const time = data.info.currentTime;
+                    setCurrentTime(time);
+
+                    // LOGICA DEL CORTE: Si se pasó del endTime, vuelve al inicio
+                    if (endTime && time >= endTime) {
+                        iframeRef.current?.contentWindow?.postMessage(
+                            JSON.stringify({
+                                event: "command",
+                                func: "seekTo",
+                                args: [startTime, true]
+                            }), "*"
+                        );
+                    }
+                }
+            } catch (e) {
+                console.error("Error processing YouTube message:", e);
+
+                /* Errores de parseo silenciosos */
+            }
+        };
+
+        window.addEventListener("message", handleMessage);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener("message", handleMessage);
+        };
+    }, [videoId, startTime, endTime, isClient]);
+
+    // 2. Sync manual cuando mueves el slider de inicio
     useEffect(() => {
         if (isClient && iframeRef.current && videoId) {
-            // We use postMessage to tell YouTube to seek
-            // This is much smoother than reloading the iframe
             iframeRef.current.contentWindow?.postMessage(
-                JSON.stringify({
-                    event: "command",
-                    func: "seekTo",
-                    args: [startTime, true]
-                }),
-                "*"
+                JSON.stringify({ event: "command", func: "seekTo", args: [startTime, true] }), "*"
             );
         }
     }, [startTime, isClient, videoId]);
@@ -53,83 +93,81 @@ export function VideoPlayer({ url, startTime = 0, endTime, layoutMode = 'landsca
         );
     }
 
-    // enablejsapi=1 is required for postMessage to work
-    const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startTime)}&rel=0&modestbranding=1&autoplay=1&enablejsapi=1`;
+    // Añadimos widgetReferrer y origin para que la API sea más estable
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startTime)}&rel=0&modestbranding=1&autoplay=1&enablejsapi=1&origin=${isClient ? window.location.origin : ''}`;
 
     const getIframeStyles = () => {
         switch (layoutMode) {
             case 'portrait-crop':
-                // Zoom in to fill height, crop sides
-                return "h-full w-auto max-w-none aspect-[16/9] absolute left-1/2 -translate-x-1/2 object-cover";
+                return {
+                    height: '100%',
+                    width: '177.77vh', // 16/9 = 1.7777. Esto asegura que el ancho sea suficiente para cubrir el alto
+                    position: 'absolute' as const,
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)', // Centra el video perfectamente
+                    pointerEvents: 'none' as const,
+                    maxWidth: 'none',
+                };
             case 'portrait-fit':
-                // Fit width, center vertically (Letterbox)
-                return "w-full h-auto aspect-[16/9] absolute top-1/2 -translate-y-1/2";
-            case 'landscape':
+                return {
+                    width: '100%',
+                    aspectRatio: '16/9',
+                    position: 'absolute' as const,
+                    top: '50%',
+                    left: '0',
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none' as const,
+                };
             default:
-                return "w-full h-full border-0 shadow-2xl";
-        }
-    };
-
-    const getModeLabel = () => {
-        switch (layoutMode) {
-            case 'portrait-crop': return 'Zoom Centrado (9:16)';
-            case 'portrait-fit': return 'Completo (Fit)';
-            default: return 'Original (16:9)';
+                return {
+                    width: '100%',
+                    height: '100%',
+                    border: '0',
+                };
         }
     };
 
     return (
-        <div className={`relative rounded-[32px] overflow-hidden bg-black border border-white/10 shadow-2xl group ${layoutMode !== 'landscape' ? 'h-full w-full' : 'w-full'}`}>
-            <div className={`relative bg-black overflow-hidden ${layoutMode !== 'landscape' ? 'h-full w-full' : 'aspect-video w-full'}`}>
-                <div className={layoutMode !== 'landscape' ? "absolute inset-0 flex items-center justify-center pointer-events-none" : ""}>
-                    <iframe
-                        ref={iframeRef}
-                        src={embedUrl}
-                        className={getIframeStyles()}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                    />
-                </div>
+        <div className={`relative rounded-[32px] overflow-hidden bg-black border border-white/10 shadow-2xl group ${layoutMode !== 'landscape' ? 'aspect-[9/16] h-[600px] mx-auto' : 'w-full aspect-video'}`}>
+            <div className="relative w-full h-full overflow-hidden">
+                <iframe
+                    ref={iframeRef}
+                    src={embedUrl}
+                    style={getIframeStyles()}
+                    className="transition-all duration-500"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                />
 
-                <div className="absolute top-4 left-4 z-20 pointer-events-none">
-                    <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest">
-                            {getModeLabel()}
-                        </span>
-                    </div>
+                {/* Overlay para bloquear interacciones directas con el iframe */}
+                <div className="absolute inset-0 z-10" />
+            </div>
+
+            {/* Overlay para bloquear clics en el iframe y que el usuario use tus controles */}
+            <div className="absolute inset-0 z-10 bg-transparent" />
+
+            <div className="absolute top-4 left-4 z-20">
+                <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                        {layoutMode}
+                    </span>
                 </div>
             </div>
 
-            <div className="p-6 flex items-center justify-between bg-zinc-900 border-t border-white/5">
+            <div className="absolute bottom-0 inset-x-0 p-4 z-30 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                     onClick={() => {
-                        iframeRef.current?.contentWindow?.postMessage(
-                            JSON.stringify({ event: "command", func: "seekTo", args: [startTime, true] }), "*"
-                        );
-                        iframeRef.current?.contentWindow?.postMessage(
-                            JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*"
-                        );
+                        iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "seekTo", args: [startTime, true] }), "*");
+                        iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "playVideo" }), "*");
                     }}
-                    className="flex items-center space-x-2 bg-primary/10 text-primary px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all border border-primary/20"
+                    className="p-2 bg-primary rounded-full text-white"
                 >
-                    <RotateCcw size={14} />
-                    <span>Ver Vista Previa</span>
+                    <RotateCcw size={16} />
                 </button>
-
-                <div className="flex items-center space-x-3">
-                    <span className="text-[10px] font-bold text-description uppercase tracking-tighter">
-                        Inicio: {startTime.toFixed(1)}s | Fin: {endTime?.toFixed(1)}s
-                    </span>
-                    <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-3 bg-white/5 rounded-xl text-gray-400 hover:text-white transition-colors"
-                    >
-                        <ExternalLink size={16} />
-                    </a>
-                </div>
+                <span className="text-[10px] text-white font-mono">
+                    {currentTime.toFixed(1)}s / {endTime?.toFixed(1)}s
+                </span>
             </div>
         </div>
     );

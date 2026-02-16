@@ -1,11 +1,13 @@
 package video
 
 import (
+	"clipstudio-worker/types"
 	"os"
+
 	"google.golang.org/api/youtube/v3"
 )
 
-func UploadResult(path string, yt *youtube.Service) (string, error) {
+func UploadResult(job *types.Job, path string, yt *youtube.Service) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -14,12 +16,12 @@ func UploadResult(path string, yt *youtube.Service) (string, error) {
 
 	video := &youtube.Video{
 		Snippet: &youtube.VideoSnippet{
-			Title:       "Clip generado automáticamente",
-			Description: "#Shorts generado por ClipStudio",
-			CategoryId:  "22",
+			Title:       job.Title,
+			Description: job.Description,
+			CategoryId:  job.CategoryID,
 		},
 		Status: &youtube.VideoStatus{
-			PrivacyStatus: "public",
+			PrivacyStatus: job.PrivacyStatus,
 		},
 	}
 

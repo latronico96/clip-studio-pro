@@ -1,10 +1,12 @@
 package main
 
-import "log"
+import (
+	"github.com/joho/godotenv"
+)
 
 func main() {
+	 _ = godotenv.Load()
 	cfg := LoadConfig()
 	client := NewBackendClient(cfg)
-	log.Println("[WORKER] ClipStudio Worker started")
 	StartPolling(client, cfg.PollInterval, cfg.WorkerID)
 }

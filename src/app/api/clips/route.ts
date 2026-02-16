@@ -2,16 +2,13 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth/options";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { processVideoClip } from "@/lib/video/processor";
-import fs from 'fs';
-import path from 'path';
-
+import { Clip } from "@prisma/client";
 
 export const LAYOUT_MODES = ['landscape', 'portrait-crop', 'portrait-fit'] as const;
 export type LayoutMode = typeof LAYOUT_MODES[number];
 
 export function isLayoutMode(value: string): value is LayoutMode {
-  return LAYOUT_MODES.includes(value as LayoutMode);
+    return LAYOUT_MODES.includes(value as LayoutMode);
 }
 
 export async function GET() {
@@ -60,18 +57,25 @@ export async function POST(request: Request) {
     if (!session || !session.user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    console.log("Creating clip for user:", session.user.id);
 
     try {
         const body = await request.json();
+        console.log("videoId, videoUrl", body.videoId, body.videoUrl);
         const {
-            videoId,
-            title,
-            startTime,
-            endTime,
             thumbnail,
-            duration,
-            layoutMode = 'landscape'
+            layoutMode = 'landscape',
+            platforms,
+            render,
+            source,
+            clip,
         } = body;
+
+        const videoId = source.videoId
+        const title = clip.title || `Clip from ${videoId}`;
+        const startTime = clip.startTime || 0;
+        const endTime = clip.endTime || 0;
+        const duration = clip.duration || 0;
 
         // Ensure VideoMetadata exists
         let video = await prisma.videoMetadata.findUnique({
@@ -94,18 +98,16 @@ export async function POST(request: Request) {
             data: {
                 userId: session.user.id,
                 videoMetadataId: video.id,
-                startTime,
-                endTime,
+                startTime: startTime,
+                endTime: endTime,
                 title: title || "Sin título",
-                platforms: "youtube,tiktok", // Default targets
+                platforms: Object.keys(platforms).join(","), // youtube,tiktok
                 status: "PENDING",
                 layoutMode: layoutMode
             }
         });
 
-        // "REAL" BACKGROUND PROCESSING SIMULATION
-        // In a real server this would be a BullMQ/Redis job
-        processClipInBackground(newClip.id);
+        createJob(newClip.id, newClip, videoId);
 
         return NextResponse.json(newClip);
     } catch (error) {
@@ -115,58 +117,38 @@ export async function POST(request: Request) {
 }
 
 // Backend Render Engine (REAL IMPLEMENTATION)
-async function processClipInBackground(clipId: string) {
-    console.log(`[RENDER ENGINE] Iniciando procesamiento REAL del Clip ID: ${clipId}`);
+async function createJob(clipId: string, newClip: Clip, videoId: string) {
+    await prisma.job.create({
+        data: {
+            title: newClip.title,
+            description: `Clip from video ${videoId} (${newClip.startTime}s to ${newClip.endTime}s)`,
+            categoryID: "22",
+            privacystatus: "public",
+            userId: newClip.userId,
+            type: "VIDEO_CLIP" as const,
+            status: "PENDING",
+            payload: {
+                clipId: newClip.id,
+                source: {
+                    youtubeVideoId: videoId
+                },
 
-    try {
-        const clip = await prisma.clip.findUnique({
-            where: { id: clipId },
-            include: { videoMetadata: true }
-        });
+                start: newClip.startTime,
+                end: newClip.endTime,
 
-        if (!clip) return;
+                layoutMode: newClip.layoutMode,
+                aspectRatio: newClip.layoutMode === "landscape" ? "16:9" : "9:16",
+                resolution: "1080x1920",
 
-        // Step 1: Processing
-        await prisma.clip.update({
-            where: { id: clipId },
-            data: { status: "PROCESSING" }
-        });
-        console.log(`[RENDER ENGINE] El Clip ${clipId} está siendo procesado por FFmpeg con modo: ${clip.layoutMode}...`);
-
-        const videoUrl = `https://www.youtube.com/watch?v=${clip.videoMetadata.vId}`;
-
-        // Step 2: Render
-        const result = await processVideoClip({
-            url: videoUrl,
-            startTime: clip.startTime,
-            endTime: clip.endTime,
-            layoutMode: isLayoutMode(clip.layoutMode)
-                ? clip.layoutMode
-                : "landscape",
-            clipId: clip.id
-        });
-
-        // Step 3: Save to public directory for serving
-        const publicRendersDir = path.join(process.cwd(), 'public', 'renders');
-        if (!fs.existsSync(publicRendersDir)) {
-            fs.mkdirSync(publicRendersDir, { recursive: true });
-        }
-
-        const outputPath = path.join(publicRendersDir, `${clip.id}.mp4`);
-        await fs.promises.writeFile(outputPath, result.buffer);
-
-        // Step 4: Success
-        await prisma.clip.update({
-            where: { id: clipId },
-            data: { status: "success" }
-        });
-        console.log(`[RENDER ENGINE] ¡Éxito! Clip ${clipId} renderizado correctamente.`);
-
-    } catch (error) {
-        console.error(`[RENDER ENGINE] Error al procesar clip ${clipId}:`, error);
-        await prisma.clip.update({
-            where: { id: clipId },
-            data: { status: "error" }
-        });
-    }
+                platforms: ["youtube"],
+                youtube: {
+                    title: newClip.title,
+                    description: "",
+                    tags: [],
+                    visibility: "public",
+                    isShort: true
+                }
+            },
+        },
+    });
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"clipstudio-worker/types"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,7 +12,7 @@ import (
 )
 
 type ClaimResponse struct {
-	Job *Job `json:"job"`
+	Job *types.Job `json:"job"`
 }
 
 type BackendClient struct {
@@ -22,6 +23,8 @@ type BackendClient struct {
 }
 
 func NewBackendClient(cfg Config) *BackendClient {
+	log.Println("[WORKER] Creating BackendClient with URL:", cfg.BackendURL)
+	log.Println("[WORKER] token:", cfg.WorkerToken)
 	return &BackendClient{
 		baseURL:  cfg.BackendURL,
 		token:    cfg.WorkerToken,
@@ -31,12 +34,15 @@ func NewBackendClient(cfg Config) *BackendClient {
 }
 
 func (c *BackendClient) auth(req *http.Request) {
+	log.Println("[WORKER] Authenticating request with token:", c.token)
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-worker-id", c.workerID)
 }
 
-func (c *BackendClient) FetchNextJob() (*Job, error) {
+func (c *BackendClient) FetchNextJob() (*types.Job, error) {
+	log.Println("[WORKER] FetchNextJob → POST /api/internal/jobs/claim")
+
 	req, err := http.NewRequest(
 		"POST",
 		c.baseURL+"/api/internal/jobs/claim",
@@ -50,18 +56,39 @@ func (c *BackendClient) FetchNextJob() (*Job, error) {
 
 	res, err := c.client.Do(req)
 	if err != nil {
+		log.Println("[WORKER] Request error:", err)
 		return nil, err
 	}
 	defer res.Body.Close()
 
+	log.Printf(
+		"[WORKER] FetchNextJob ← status=%d %s",
+		res.StatusCode,
+		res.Status,
+	)
+
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Println("[WORKER] Read body error:", err)
+		return nil, err
+	}
+
+	log.Println("[WORKER] Raw response body:", string(bodyBytes))
+
+	res.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
 	var resp ClaimResponse
 	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+		log.Println("[WORKER] Decode error:", err)
 		return nil, err
 	}
 
 	if resp.Job == nil {
+		log.Println("[WORKER] No job available")
 		return nil, nil
 	}
+
+	log.Printf("[WORKER] Job claimed → id=%s", resp.Job.ID)
 
 	return resp.Job, nil
 }

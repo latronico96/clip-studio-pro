@@ -49,6 +49,7 @@ model User {
   clips         Clip[]
   createdAt     DateTime @default(now())
   tiktokAccount       TikTokAccount?
+  jobs  Job[]
 }
 
 model VerificationToken {
@@ -82,9 +83,9 @@ model Clip {
   layoutMode      String   @default("landscape") // landscape, portrait-crop, portrait-fit
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  
   user          User          @relation(fields: [userId], references: [id])
   videoMetadata VideoMetadata @relation(fields: [videoMetadataId], references: [id])
+  jobs  Job[]
 }
 
 model TikTokAccount {
@@ -99,19 +100,39 @@ model TikTokAccount {
 }
 
 model Job {
-  id        String   @id @default(uuid())
-  type      String
-  payload   Json
-  status    String   @default("PENDING") // PENDING | PROCESSING | DONE | FAILED
-  lockedBy  String?
-  lockedAt  DateTime?
+  id            String   @id @default(uuid())
+  type          JobType
+  status        JobStatus @default(PENDING)
+  attempts      Int      @default(0)
+  maxAttempts   Int      @default(3)
+  lockedBy      String?
+  lockedAt      DateTime?
   lastHeartbeat DateTime?
-  error     String?
-  userId    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  result     Json?
-  finishedAt DateTime?
-  attempts   Int      @default(0)
-  maxAttempts Int     @default(3)
+  error         String?
+  result        Json?
+  payload       Json
+  userId        String?
+  clipId        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  finishedAt    DateTime?
+  user User? @relation(fields: [userId], references: [id])
+  clip Clip? @relation(fields: [clipId], references: [id])
+	title         String?
+	description   String?
+	categoryID    String?
+	privacystatus String?
 }
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+  DEAD
+}
+
+enum JobType {
+  VIDEO_CLIP
+}
+

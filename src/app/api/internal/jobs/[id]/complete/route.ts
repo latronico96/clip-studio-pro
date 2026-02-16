@@ -70,7 +70,7 @@ export async function POST(
       where: { id: jobId },
       data: {
         attempts: { increment: 1 },
-        status: "DEAD",
+        status: "DEAD" as const,
         finishedAt: new Date(),
         error
       }

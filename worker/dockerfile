@@ -1,25 +1,43 @@
+# ======================
 # Builder stage
-FROM golang:1.25-alpine AS builder
-
+# ======================
+FROM golang:1.25-bookworm AS builder
 WORKDIR /app
 
-# Copiar solo archivos de módulos primero para aprovechar cache
+# Aprovechar el cache de capas para las dependencias
 COPY go.mod go.sum ./
-RUN go mod tidy
+RUN go mod download
 
-# Copiar el resto del código
 COPY . .
+# Build estático para evitar problemas de librerías en el runtime
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o worker .
 
-# Compilar binario estático
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o worker .
+# ======================
+# Runtime stage
+# ======================
+FROM jrottenberg/ffmpeg:6.1-ubuntu
 
-# Final stage
-FROM alpine:3.19
-
+# Evitar prompts interactivos durante la instalación
+ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
+
+# Instalamos python y certificados (necesarios para descargas HTTPS)
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalamos yt-dlp directamente. 
+# Si la distro se queja por "externally managed environment", usamos --break-system-packages
+# ya que el contenedor es desechable y específico para esto.
+RUN pip3 install --no-cache-dir -U yt-dlp --break-system-packages
+
+# Copiamos el binario desde el builder
 COPY --from=builder /app/worker .
 
-# Dependencias mínimas de Alpine para TLS y logs
-RUN apk add --no-cache ca-certificates
+# Ejecución
+ENTRYPOINT []
 
+# 2. Ejecutar tu worker
 CMD ["./worker"]

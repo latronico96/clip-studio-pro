@@ -1,18 +1,22 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { VideoPlayer } from "@/components/VideoPlayer";
 import { Timeline } from "@/components/Timeline";
 import { Save, Youtube, Smartphone, Check, Scissors } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
+
+const VideoPlayer = dynamic(
+  () => import("@/components/VideoPlayer"),
+  { ssr: false }
+);
 
 function EditorContent() {
     const searchParams = useSearchParams();
     const videoUrl = searchParams.get("url") || "";
     const urlDuration = parseFloat(searchParams.get("duration") || "0");
     const hasUrl = !!videoUrl;
-
     const [startTime, setStartTime] = useState(0);
     const [endTime, setEndTime] = useState(urlDuration > 30 ? 30 : urlDuration || 30);
     const [title, setTitle] = useState("Mi primer clip viral");
@@ -20,17 +24,37 @@ function EditorContent() {
     const [showSuccess, setShowSuccess] = useState(false);
     const [duration, setDuration] = useState(urlDuration || 600);
     const [layoutMode, setLayoutMode] = useState<'landscape' | 'portrait-crop' | 'portrait-fit'>('portrait-crop');
+    const [platforms, ] = useState({
+        youtube: true,
+        tiktok: true,
+    });
+    const [youtubeConfig, ] = useState({
+        title,
+        description: "",
+        visibility: "public", // public | unlisted | private
+        madeForKids: false,
+    });
+    const [tiktokConfig, ] = useState({ caption: title });
+    const renderConfig = {
+        fps: 30,
+        resolution:
+            layoutMode === "landscape" ? "1920x1080" : "1080x1920",
+        audio: {
+            normalize: true,
+        },
+    };
+    const workflowConfig = {
+        autoPublish: true,
+        generateThumbnail: true,
+        thumbnailFrame: 3,
+    };
 
-
-    // Simulated worker for clip processing
     useEffect(() => {
         if (showSuccess) {
-            // In a real app, a background job would do this
             console.log("Simulating background processing for clip...");
         }
     }, [showSuccess]);
 
-    // Update duration if it changes in URL
     useEffect(() => {
         if (urlDuration > 0) {
             setDuration(urlDuration);
@@ -38,28 +62,52 @@ function EditorContent() {
         }
     }, [urlDuration]);
 
-
     const handleSave = async () => {
         if (!hasUrl) return;
         setIsSaving(true);
-
         try {
-            // Simple extraction of YouTube ID
             const urlObj = new URL(videoUrl);
-            const videoId = urlObj.searchParams.get("v") || videoUrl.split('/').pop() || "";
-
+            const videoId =
+                urlObj.searchParams.get("v") ||
+                videoUrl.split("/").pop() ||
+                "";
             const res = await fetch("/api/clips", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    videoId,
-                    videoUrl,
-                    title,
-                    startTime,
-                    endTime,
-                    duration,
-                    layoutMode // Send 3-state mode to backend
-                })
+                    source: {
+                        videoId,
+                        videoUrl,
+                    },
+                    clip: {
+                        title,
+                        startTime,
+                        endTime,
+                        duration: endTime - startTime,
+                        layoutMode,
+                    },
+                    platforms: {
+                        youtube: platforms.youtube
+                            ? {
+                                metadata: {
+                                    title: youtubeConfig.title,
+                                    description: youtubeConfig.description,
+                                    visibility: youtubeConfig.visibility,
+                                    madeForKids: youtubeConfig.madeForKids,
+                                },
+                            }
+                            : null,
+                        tiktok: platforms.tiktok
+                            ? {
+                                metadata: {
+                                    caption: tiktokConfig.caption,
+                                },
+                            }
+                            : null,
+                    },
+                    render: renderConfig,
+                    workflow: workflowConfig,
+                }),
             });
 
             if (!res.ok) throw new Error("Save failed");
@@ -73,6 +121,7 @@ function EditorContent() {
             setIsSaving(false);
         }
     };
+
 
     const clipDuration = endTime - startTime;
     const isTooLong = clipDuration > 60;
